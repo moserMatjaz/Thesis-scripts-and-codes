@@ -1,0 +1,61 @@
+CREATE INDEX ON :AREA(name);
+CREATE INDEX ON :AREA(ID);
+CREATE INDEX ON :INGREDIENT(name);
+CREATE INDEX ON :INGREDIENT(ID);
+CREATE INDEX ON :CUISINE(name);
+CREATE INDEX ON :CUISINE(ID);
+CREATE INDEX ON :CUISINE(scope);
+CREATE INDEX ON :INGREDIENT_CATEGORY(name);
+CREATE INDEX ON :INGREDIENT_CATEGORY(ID);
+CREATE INDEX ON :RECIPE(ID);
+CREATE INDEX ON :RECIPE(source);
+CREATE INDEX ON :RECIPE(cuisine);
+CREATE INDEX ON :COMPOUND(name);
+CREATE INDEX ON :COMPOUND(ID);
+
+LOAD CSV WITH HEADERS FROM "file:/Users/Matjaz Moser/Dropbox/SABANCI/summer project/recipes_visalisation/Neo4j/data/INGREDIENT_CATEGORY.csv" AS csvLine
+CREATE (ingred_cat:INGREDIENT_CATEGORY { ID:toInt(csvLine.id), name:csvLine.name});
+
+USING PERIODIC COMMIT 100
+LOAD CSV WITH HEADERS FROM "file:/Users/Matjaz Moser/Dropbox/SABANCI/summer project/recipes_visalisation/Neo4j/data/INGREDIENT.csv" AS csvLine
+CREATE (ingred:INGREDIENT { ID:toInt(csvLine.id), name:csvLine.name});
+
+LOAD CSV WITH HEADERS FROM "file:/Users/Matjaz Moser/Dropbox/SABANCI/summer project/recipes_visalisation/Neo4j/data/CUISINE.csv" AS csvLine
+CREATE(cuis:CUISINE {ID:toInt(csvLine.id), name:csvLine.name, scope:csvLine.scope});
+
+USING PERIODIC COMMIT 1000
+LOAD CSV WITH HEADERS FROM "file:/Users/Matjaz Moser/Dropbox/SABANCI/summer project/recipes_visalisation/Neo4j/data/RECIPES.csv" AS csvLine
+CREATE(rec:RECIPE {ID:toInt(csvLine.id), source:csvLine.source, cuisine:csvLine.cuisine});
+
+LOAD CSV WITH HEADERS FROM "file:/Users/Matjaz Moser/Dropbox/SABANCI/summer project/recipes_visalisation/Neo4j/data/AREA.csv" AS csvLine
+CREATE (ar:AREA{ID:toInt(csvLine.id),name:csvLine.name});
+
+USING PERIODIC COMMIT 1000
+LOAD CSV WITH HEADERS FROM "file:/Users/Matjaz Moser/Dropbox/SABANCI/summer project/recipes_visalisation/Neo4j/data/ingred_belongsto_ingredcat.csv" AS csvLine
+MERGE (ingred:INGREDIENT { name:csvLine.ingredient_name})
+MERGE (ingred_cat:INGREDIENT_CATEGORY {name:csvLine.ingredientcategory_name})
+CREATE (ingred)-[:BELONGS_TO]->(ingred_cat)
+
+USING PERIODIC COMMIT 1000
+LOAD CSV WITH HEADERS FROM "file:/Users/Matjaz Moser/Dropbox/SABANCI/summer project/recipes_visalisation/Neo4j/data/ingred_partof_recipe.csv" AS csvLine
+MERGE (ingred:INGREDIENT {name:csvLine.ingredient_name})
+MERGE (rec:RECIPE {ID:toInt(csvLine.recipe_id)})
+CREATE (ingred)-[:IS_PART_OF]->(rec)
+
+USING PERIODIC COMMIT 1000
+LOAD CSV WITH HEADERS FROM "file:/Users/Matjaz Moser/Dropbox/SABANCI/summer project/recipes_visalisation/Neo4j/data/cuisine_locatedin_area.csv" AS csvLine
+MERGE(cuis:CUISINE{name:csvLine.cuisine_name})
+MERGE(ar:AREA {name:csvLine.area_name})
+CREATE (cuis)-[:ORIGINATES_FROM]->(ar)
+
+USING PERIODIC COMMIT 1000
+LOAD CSV WITH HEADERS FROM "file:/Users/Matjaz Moser/Dropbox/SABANCI/summer project/recipes_visalisation/Neo4j/data/RECIPES.csv" AS csvLine
+MERGE(cuis:CUISINE{name:csvLine.cuisine})
+MERGE (rec:RECIPE {ID:toInt(csvLine.id)})
+CREATE (rec)-[:IS_FROM ]->(cuis)
+
+USING PERIODIC COMMIT 1000
+LOAD CSV WITH HEADERS FROM "file:/Users/Matjaz Moser/Dropbox/SABANCI/summer project/recipes_visalisation/Neo4j/data/cuisines_similarities.csv" AS csvLine
+MERGE(cuis_source:CUISINE{name:csvLine.source})
+MERGE(cuis_target:CUISINE{name:csvLine.target})
+CREATE (cuis_source)-[:SIMILIARITY {value:toFloat(csvLine.value)}]->(cuis_target)
